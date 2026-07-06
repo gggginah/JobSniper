@@ -60,23 +60,63 @@ This version introduced local decision logic before calling the LLM, making the 
 ## v0.4 - Guardrailed Tailored Resume Generator
 
 ### Goal
-Generate a JD-tailored resume draft while preventing hallucinated or exaggerated resume content.
+
+Move from analysis-only output to a controlled resume generation workflow.
+
+Instead of only printing resume feedback in the terminal, this version generates Markdown files that can be reviewed, copied, and manually converted into a polished resume.
 
 ### Features
-- Generates Markdown resume package under `output/`.
-- Creates a unique output folder for each run.
-- Produces:
-  - `tailored_resume.md`
-  - `optimization_report.md`
-  - `change_log.md`
-  - `rejected_claims.md`
-  - `questions_to_confirm.md`
-- Adds resume rewrite guardrails:
-  - Safe Rewrite
-  - Needs Confirmation
-  - Not Allowed
-- Requires evidence from the original resume for each major rewrite.
-- Separates unsafe or unsupported claims from the final resume draft.
+
+- Generates a JD-tailored English resume draft based on the selected resume profile.
+- Saves output into a unique timestamped folder under `output/`.
+- Produces two Markdown files:
+  - `tailored_resume_en.md`
+  - `review_notes_bilingual.md`
+- Keeps the tailored resume draft fully in English for real job application use.
+- Keeps explanations, risks, missing information, and confirmation questions in a separate bilingual review file.
+- Adds safety guardrails to prevent hallucinated or exaggerated resume content.
+- Separates safe resume rewrites from unsupported or risky claims.
+- Requires rewritten content to be grounded in the original resume.
+- Avoids adding fake metrics, tools, customers, projects, responsibilities, or achievements.
+- Keeps generated output files out of GitHub through `.gitignore`.
+
+### Output Structure
+
+```text
+output/
+└── <timestamp>_<job_title>/
+    ├── tailored_resume_en.md
+    └── review_notes_bilingual.md
+
+
+    ## v0.5 - JD Requirement Classification and ATS-like Match Scoring
+
+### Goal
+
+Improve the stability and explainability of resume-JD match scoring.
+
+Previous versions allowed the LLM to provide an overall match score directly, which could vary depending on prompt wording. This version introduces JD requirement classification and a fixed ATS-like scoring rubric to reduce score drift.
+
+### Features
+
+- Adds JD requirement classification before scoring:
+  - Must-have Requirements
+  - Nice-to-have Requirements
+  - Transferable Skills
+  - Red Flags
+- Adds a fixed 100-point ATS-like scoring rubric:
+  - Must-have Requirements Match: 35 points
+  - Transferable Skills Match: 20 points
+  - Responsibility Alignment: 20 points
+  - Nice-to-have Coverage: 10 points
+  - ATS Readability: 15 points
+- Requires evidence from the original resume for each scoring dimension.
+- Requires matching JD requirements for each scoring dimension.
+- Requires deduction reasons for each scoring dimension.
+- Prevents high scores when the original resume lacks supporting evidence.
+- Adds `temperature=0` to reduce randomness in LLM output.
+- Outputs requirement classification and score breakdown in `review_notes_bilingual.md`.
 
 ### Notes
-This version moves the project from analysis-only output to controlled resume generation with human review.
+
+This version does not connect to a real ATS system. Instead, it simulates ATS-style resume screening using a fixed, evidence-based scoring framework.

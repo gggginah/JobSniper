@@ -361,6 +361,82 @@ def build_single_resume_prompt(job_title, jd, selected_role, selected_resume, ti
 简历改写护栏 Resume Guardrails
 ====================
 
+JD Requirement Classification + Stable ATS-like Match Scoring Rubric：
+
+====================
+v0.5 JD Requirement Classification
+====================
+
+Before scoring or rewriting the resume, you must first classify the JD requirements into four categories:
+
+1. Must-have Requirements / 硬性要求
+These are hard requirements that appear necessary for the role.
+They are often indicated by words such as:
+required, must have, minimum qualifications, proven experience, hands-on experience, strong knowledge of, fluency in, ability to, years of experience.
+
+2. Nice-to-have Requirements / 加分项
+These are preferred or bonus qualifications.
+They are often indicated by words such as:
+preferred, nice to have, bonus, plus, familiarity with, experience is a plus.
+
+3. Transferable Skills / 可迁移能力
+These are skills or experiences that can be demonstrated through adjacent roles or different job titles.
+Examples include:
+stakeholder management, cross-functional collaboration, technical troubleshooting, customer communication, onboarding, implementation support, process improvement, problem solving, documentation, product feedback, technical communication.
+
+4. Red Flags / 高风险缺口
+These are important JD requirements that are clearly missing from the resume and may significantly reduce the chance of passing screening.
+
+Important:
+- Do not treat every JD keyword as equally important.
+- Must-have requirements should matter more than nice-to-have requirements.
+- Transferable skills can count only when supported by concrete evidence from the original resume.
+- Red flags must not be hidden or softened.
+
+====================
+v0.5 Stable ATS-like Match Scoring Rubric
+====================
+
+After classifying the JD requirements, evaluate the original resume against the JD using the fixed scoring rubric below.
+
+Total Score: 100 points
+
+1. Must-have Requirements Match - 35 points
+Evaluate how many must-have requirements are clearly supported by the original resume.
+
+2. Transferable Skills Match - 20 points
+Evaluate whether the resume contains concrete evidence of transferable skills relevant to this role.
+
+3. Responsibility Alignment - 20 points
+Evaluate whether the resume experience aligns with the responsibilities described in the JD.
+
+4. Nice-to-have Coverage - 10 points
+Evaluate whether the resume covers preferred or bonus qualifications.
+
+5. ATS Readability - 15 points
+Evaluate whether the resume is likely to be parsed clearly by an ATS:
+- clear section headings
+- standard bullet points
+- no tables
+- no images
+- no text boxes
+- clear skills section
+- clear job titles and dates if available
+
+Scoring rules:
+- The total score must equal the sum of the five dimensions.
+- For each dimension, provide a score, evidence, and deduction reason.
+- For each dimension, cite matching JD requirements.
+- For each dimension, cite evidence from the original resume.
+- If there is no direct or transferable evidence from the original resume, that dimension cannot receive more than 40% of its maximum score.
+- Must-have requirements should be weighted more heavily than nice-to-have requirements.
+- Nice-to-have requirements should not overly penalize the score if missing.
+- Transferable skills can improve the score only when supported by concrete resume evidence.
+- Do not give an encouraging score just to be nice.
+- Do not increase the score based on information that is not present in the resume.
+- Do not change the scoring standard based on how strong or weak the candidate seems.
+
+
 你必须把所有可能的改写分成三类：
 
 A. Safe Rewrite
@@ -517,21 +593,183 @@ English:
 - 核心 ATS 关键词：
 - 隐藏筛选标准：
 
-## 2. Resume Match Score / 简历匹配度
+## 2. JD Requirement Classification / JD要求分类
 
 English:
-- Match Score: xx/100
+
+### Must-have Requirements
+
+1.
+
+2.
+
+3.
+
+### Nice-to-have Requirements
+
+1.
+
+2.
+
+3.
+
+### Transferable Skills
+
+1.
+
+2.
+
+3.
+
+### Red Flags
+
+1.
+
+2.
+
+3.
+
+中文：
+
+### 硬性要求
+
+1.
+
+2.
+
+3.
+
+### 加分项
+
+1.
+
+2.
+
+3.
+
+### 可迁移能力
+
+1.
+
+2.
+
+3.
+
+### 高风险缺口
+
+1.
+
+2.
+
+3.
+
+## 3. Stable ATS-like Match Score / 稳定 ATS-like 匹配度评分
+
+English:
+
+- Total Score: xx/100
+
+Score Breakdown:
+
+1. Must-have Requirements Match: xx/35
+
+   Matching JD Requirements:
+
+   Evidence From Original Resume:
+
+   Deductions:
+
+2. Transferable Skills Match: xx/20
+
+   Matching JD Requirements:
+
+   Evidence From Original Resume:
+
+   Deductions:
+
+3. Responsibility Alignment: xx/20
+
+   Matching JD Requirements:
+
+   Evidence From Original Resume:
+
+   Deductions:
+
+4. Nice-to-have Coverage: xx/10
+
+   Matching JD Requirements:
+
+   Evidence From Original Resume:
+
+   Deductions:
+
+5. ATS Readability: xx/15
+
+   Evidence From Original Resume:
+
+   Deductions:
+
+Final Assessment:
+
 - Match Type: Strong / Medium / Weak
+
 - Worth Applying: Yes / No / Maybe
+
 - Reason:
 
 中文：
-- 匹配度：xx/100
+
+- 总分：xx/100
+
+评分拆解：
+
+1. 硬性要求匹配：xx/35
+
+   匹配的 JD 要求：
+
+   原简历证据：
+
+   扣分原因：
+
+2. 可迁移能力匹配：xx/20
+
+   匹配的 JD 要求：
+
+   原简历证据：
+
+   扣分原因：
+
+3. 职责匹配：xx/20
+
+   匹配的 JD 要求：
+
+   原简历证据：
+
+   扣分原因：
+
+4. 加分项覆盖：xx/10
+
+   匹配的 JD 要求：
+
+   原简历证据：
+
+   扣分原因：
+
+5. ATS 可读性：xx/15
+
+   原简历证据：
+
+   扣分原因：
+
+最终判断：
+
 - 匹配类型：强匹配 / 中等匹配 / 弱匹配
+
 - 是否值得投递：是 / 否 / 视情况
+
 - 原因：
 
-## 3. Evidence-Based Match / 基于证据的匹配分析
+## 4. Evidence-Based Match / 基于证据的匹配分析
 
 For each important JD requirement, provide:
 
@@ -547,7 +785,7 @@ English:
 - 是否可以写进新简历：是 / 否
 - 说明：
 
-## 4. Change Log / 修改记录
+## 5. Change Log / 修改记录
 
 For each key change:
 
@@ -571,7 +809,7 @@ English:
 - 是否新增事实：是 / 否
 - 是否需要我确认：是 / 否
 
-## 5. Rejected Claims / 被拒绝写入的内容
+## 6. Rejected Claims / 被拒绝写入的内容
 
 List claims that might help match the JD but cannot be included because the original resume does not provide enough evidence.
 
@@ -587,7 +825,7 @@ English:
 - 缺少什么证据：
 - 如果是真的，我需要确认什么：
 
-## 6. Questions to Confirm / 待确认问题
+## 7. Questions to Confirm / 待确认问题
 
 List questions that would help generate a stronger ATS-optimized resume in the next iteration.
 
@@ -783,25 +1021,38 @@ TAM:
 # =========================
 
 # 7. 调用 DeepSeek
+# v0.5新增重试机制以防连接不稳定报错
 
 # =========================
+import time
+from openai import APIConnectionError
 
 def ask_deepseek(prompt):
+    max_retries = 3
 
-    response = client.chat.completions.create(
+    for attempt in range(max_retries):
+        try:
+            response = client.chat.completions.create(
+                model="deepseek-chat",
+                messages=[
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0,
+                timeout=60
+            )
 
-        model="deepseek-chat",
+            return response.choices[0].message.content
 
-        messages=[
+        except APIConnectionError as error:
+            print(f"Network connection failed. Attempt {attempt + 1}/{max_retries}")
+            print("This is likely a temporary network, VPN, or API connection issue.")
 
-            {"role": "user", "content": prompt}
-
-        ]
-
-    )
-
-    return response.choices[0].message.content
-
+            if attempt < max_retries - 1:
+                time.sleep(5)
+            else:
+                raise error
+            
+            
 # =========================
 
 # 8. 主流程
