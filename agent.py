@@ -3,7 +3,9 @@ from openai import OpenAI
 # 用于把.env里面的环境变量加载进python
 from dotenv import load_dotenv
 import os
-
+# 时间戳工具，用于后续生成的output文件名拼接时间戳，每次调用都生成一份文件不被覆盖
+from datetime import datetime
+import os
 
 # 和openai对话的入口
 
@@ -19,6 +21,107 @@ def read_file(path):
     with open(path, "r", encoding="utf-8") as file:
         return file.read()
     
+
+# 用来生成文件夹和.md文件
+def create_output_run_folder(job_title):
+    """
+    Create a unique output folder for each run.
+
+    Example:
+    output/2026-07-06_1530_Technical_Account_Manager/
+    """
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H%M")
+
+    safe_job_title = job_title.replace(" ", "_").replace("/", "_").replace("\\", "_")
+    folder_name = f"{timestamp}_{safe_job_title}"
+
+    output_path = os.path.join("output", folder_name)
+    os.makedirs(output_path, exist_ok=True)
+
+    return output_path
+    
+
+def save_file(path, content):
+    """
+    Save text content into a local file.
+    Used for writing Markdown output files.
+    """
+    with open(path, "w", encoding="utf-8") as file:
+        file.write(content)
+
+
+def extract_markdown_section(full_text, start_marker, end_marker=None):
+    """
+    Extract a section from the LLM response based on custom markers.
+
+    If the marker is not found, return an empty string.
+    This helps split one DeepSeek response into multiple .md files.
+    """
+    if start_marker not in full_text:
+        return ""
+
+    start_index = full_text.find(start_marker) + len(start_marker)
+
+    if end_marker and end_marker in full_text:
+        end_index = full_text.find(end_marker)
+        return full_text[start_index:end_index].strip()
+
+    return full_text[start_index:].strip()
+
+def save_v04_outputs(result, job_title):
+
+    """
+
+    Save the DeepSeek v0.4 result into two Markdown files:
+
+    1. English tailored resume draft
+
+    2. Bilingual review notes
+
+    """
+
+    output_folder = create_output_run_folder(job_title)
+
+    tailored_resume_en = extract_markdown_section(
+
+        result,
+
+        "===TAILORED_RESUME_EN_MD===",
+
+        "===REVIEW_NOTES_BILINGUAL_MD==="
+
+    )
+
+    review_notes_bilingual = extract_markdown_section(
+
+        result,
+
+        "===REVIEW_NOTES_BILINGUAL_MD==="
+
+    )
+
+    if tailored_resume_en:
+
+        save_file(
+
+            os.path.join(output_folder, "tailored_resume_en.md"),
+
+            tailored_resume_en
+
+        )
+
+    if review_notes_bilingual:
+
+        save_file(
+
+            os.path.join(output_folder, "review_notes_bilingual.md"),
+
+            review_notes_bilingual
+
+        )
+
+    print(f"v0.4 Markdown files saved to: {output_folder}")
+
 
 # 用来读取jd，第一行必须是jobtitle用来匹配三份简历
 def read_jd_file(path):
@@ -227,265 +330,296 @@ def choose_resume_by_job_title(job_title):
 # 5. Prompt：匹配成功时，只分析一份简历
 
 # =========================
-
 def build_single_resume_prompt(job_title, jd, selected_role, selected_resume, title_scores):
-
     prompt = f"""
+你现在是一个资深招聘专员、ATS简历优化专家、简历改写专家。
 
-你现在是一个资深招聘专员、简历优化顾问、ATS筛选器和岗位面试官。
+你的任务是：
+基于我提供的原始英文简历和目标 JD，生成一份更贴合该岗位的英文 Markdown 简历草稿。
 
-我会给你：
+同时，你需要生成一份中英对照的 review notes，用来解释修改逻辑、风险、缺失信息和待确认问题。
 
-1. 一个目标岗位名称
-
-2. 一份目标岗位 JD
-
-3. 一份根据岗位名称初步匹配出的简历
-
-系统已经根据岗位名称做了本地初筛，初步推荐使用的简历方向是：{selected_role}
-
-本地岗位名称匹配分数如下：
-
-{title_scores}
-
-请你基于 JD 和这份简历，完成以下任务。
-
-重要限制：
-
-- 不要编造我没有的经历。
-
-- 只能基于我提供的简历内容进行分析、匹配和改写。
-
-- 如果某个关键词或经历在我的简历中没有体现，请明确指出“缺失”，不要虚构。
-
-- 改写时可以优化表达方式，但不能创造不存在的项目、公司、数据或职责。
-
-- 如果原简历没有量化数据，可以用“建议补充量化数据：...”的方式提醒我，而不是替我编数字。
-
-- 如果你认为本地初筛选择的简历不合适，请明确指出，并说明原因。
+非常重要：
+你必须严格遵守“事实约束改写”原则。
 
 ====================
-
-任务一：JD核心分析
-
+最高优先级规则
 ====================
 
-请输出：
-
-1. 该岗位更接近哪个方向：SE / CSM / TAM / 混合型
-
-2. 岗位核心职责
-
-3. 岗位核心关键词
-
-4. 岗位最看重的能力
-
-5. 该岗位可能的隐藏筛选标准
-
-====================
-
-任务二：简历匹配度分析
+1. 不要编造我没有的经历。
+2. 不要添加原简历中不存在的公司、项目、工具、技术、客户、行业、数据、成果。
+3. 不要把“参与/协助”夸大成“主导/负责”，除非原简历中明确体现。
+4. 不要替我编量化指标。
+5. 如果原简历没有数字，不要在英文简历草稿里写占位符。
+6. 如果缺少量化数据，请在 tailored_resume_en.md 中写一个不虚构数字的安全表达。
+7. 需要补充的量化数据、客户规模、工具细节、业务成果等，统一放到 review_notes_bilingual.md。
+8. 如果某个 JD 要求在原简历中没有证据，请明确标记为“缺失，不能生成”，并放到 review_notes_bilingual.md，不要写进英文简历正文。
+9. 生成的新简历必须是可信的投递草稿，不是夸张营销文案。
+10. 不要为了提高 ATS 命中而牺牲真实性。
 
 ====================
+简历改写护栏 Resume Guardrails
+====================
 
-请对这份简历和该 JD 的匹配度打分，分数范围为 0-100。
+你必须把所有可能的改写分成三类：
 
-请输出：
+A. Safe Rewrite
+只改变表达方式，不改变事实含义。
+可以用于最终英文简历草稿。
 
+B. Needs Confirmation
+基于原简历可以合理推测，但缺少具体证据、数据或边界。
+不能直接放入最终英文简历草稿，必须放到 review_notes_bilingual.md 的 Questions to Confirm 部分。
+
+C. Not Allowed
+原简历没有证据支持，或会造成夸大、虚构、职责升级。
+禁止写入最终英文简历草稿。
+只能放到 review_notes_bilingual.md 的 Rejected Claims 部分。
+
+最终生成的 tailored_resume_en.md 只能包含 A 类内容。
+B 类和 C 类内容不能进入 tailored_resume_en.md。
+
+====================
+你的工作流程
+====================
+
+请你严格按以下步骤完成：
+
+第一步：从原始简历中提取“事实库”
+- 只提取原简历明确出现的信息。
+- 包括：岗位、职责、项目、技能、工具、合作对象、成果、业务场景。
+- 不要推测。
+
+第二步：从 JD 中提取“目标画像”
+- 提取岗位关键词。
+- 提取核心职责。
+- 提取硬技能。
+- 提取软技能。
+- 提取 ATS 可能筛选的关键词。
+
+第三步：建立“JD 要求 ↔ 简历事实证据”映射
+- 哪些 JD 要求可以由原简历中的事实支持。
+- 哪些 JD 要求没有对应证据。
+- 哪些内容可以安全改写。
+- 哪些内容不能写进新简历。
+
+第四步：生成 tailored resume draft
+- 基于原简历事实。
+- 更贴合目标 JD。
+- 用 ATS 友好的结构。
+- 用清晰的 Markdown 格式。
+- 不使用表格。
+- 不使用图片。
+- 不使用复杂排版。
+- 不使用过度花哨标题。
+- 不出现中文。
+- 不出现修改说明。
+- 不出现风险提醒。
+- 不出现待确认问题。
+- 不出现 [Metric needed] 这类占位符。
+- 保留简历基本结构：
+  1. Name / Contact，如果原简历有
+  2. Professional Summary
+  3. Core Skills / Technical Skills
+  4. Professional Experience
+  5. Education / Certifications，如果原简历有
+
+第五步：生成 review notes
+- 用中英对照解释修改逻辑。
+- 说明匹配度。
+- 说明哪些内容被强化。
+- 说明哪些内容因为缺少证据没有写入。
+- 说明哪些信息需要我确认。
+- 说明每一处关键改写的原简历证据。
+
+第六步：最终自检
+在输出 Tailored Resume Draft 之前，请检查每一句新简历内容：
+
+1. 是否能在原简历中找到事实依据？
+2. 是否改变了原经历的责任级别？
+3. 是否添加了原简历中不存在的技术、工具、客户、数据或成果？
+4. 是否为了迎合 JD 而硬塞关键词？
+5. 是否听起来像 AI 生成的空泛营销语言？
+6. 是否包含任何中文、风险提醒、待确认项或占位符？
+
+如果任一句不通过，请删除或降级表达。
+不要为了提高匹配度牺牲真实性。
+
+====================
+输出语言要求
+====================
+
+1. tailored_resume_en.md 必须全部使用英文。
+   - 这是用于真实投递的英文简历草稿。
+   - 不要出现中文解释。
+   - 不要中英混排。
+   - 不要写中文提示。
+   - 不要出现 [Metric needed] 或任何占位符。
+   - 缺少量化数据时，写安全但不虚构的英文表达。
+   - 所有待确认项放到 review_notes_bilingual.md。
+
+2. review_notes_bilingual.md 使用中英对照。
+   - 用来帮助我理解修改逻辑。
+   - 先英文，后中文。
+   - 可以包含分析、修改原因、风险提醒、缺失信息、待确认问题。
+   - 不用于投递。
+
+====================
+输出格式要求
+====================
+
+你必须严格使用以下两个分隔标记，方便程序保存成两个 .md 文件。
+
+===TAILORED_RESUME_EN_MD===
+
+# Tailored Resume Draft
+
+Please generate a complete English Markdown resume draft.
+
+Requirements:
+- Use English only.
+- This version should be suitable for job application review.
+- Keep all factual information grounded in the original resume.
+- Do not invent companies, projects, tools, metrics, customers, industries, responsibilities, or achievements.
+- Do not exaggerate responsibility level.
+- Do not include placeholders such as [Metric needed].
+- If metrics are missing, write a safe non-quantified version and mention the metric request only in review notes.
+- Use ATS-friendly formatting.
+- Do not use tables, images, text boxes, or complex layout.
+- Keep the structure:
+  1. Name / Contact if available in the original resume
+  2. Professional Summary
+  3. Core Skills / Technical Skills
+  4. Professional Experience
+  5. Education / Certifications if available
+
+===REVIEW_NOTES_BILINGUAL_MD===
+
+# Review Notes / 修改复盘
+
+Please provide bilingual review notes. Write English first, then Chinese for each section.
+
+## 1. JD Role Analysis / JD岗位分析
+
+English:
+- Job Title:
+- Local Router Result:
+- Role Type: SE / CSM / TAM / Hybrid
+- Core Responsibilities:
+- Core ATS Keywords:
+- Hidden Screening Criteria:
+
+中文：
+- 岗位名称：
+- 本地路由结果：
+- 岗位类型：SE / CSM / TAM / 混合型
+- 核心职责：
+- 核心 ATS 关键词：
+- 隐藏筛选标准：
+
+## 2. Resume Match Score / 简历匹配度
+
+English:
+- Match Score: xx/100
+- Match Type: Strong / Medium / Weak
+- Worth Applying: Yes / No / Maybe
+- Reason:
+
+中文：
 - 匹配度：xx/100
+- 匹配类型：强匹配 / 中等匹配 / 弱匹配
+- 是否值得投递：是 / 否 / 视情况
+- 原因：
 
-- 核心匹配点：
+## 3. Evidence-Based Match / 基于证据的匹配分析
 
-- 明显短板：
+For each important JD requirement, provide:
 
-- 是否适合投递：
+English:
+- JD Requirement:
+- Evidence From Original Resume:
+- Can Be Used in Resume: Yes / No
+- Explanation:
 
-- 是否需要微调：
+中文：
+- JD要求：
+- 原简历证据：
+- 是否可以写进新简历：是 / 否
+- 说明：
 
-- 如果不适合，原因是什么：
+## 4. Change Log / 修改记录
 
-====================
+For each key change:
 
-任务三：缺失信息分析
+English:
+- Original:
+- Rewritten:
+- Reason:
+- JD Keywords Added:
+- Evidence From Original Resume:
+- Safety Category: Safe Rewrite / Needs Confirmation / Not Allowed
+- New Fact Added: Yes / No
+- Needs User Confirmation: Yes / No
 
-====================
+中文：
+- 原句：
+- 改写后：
+- 修改原因：
+- 加入或强化的 JD 关键词：
+- 原简历证据：
+- 安全分类：安全改写 / 需要确认 / 禁止写入
+- 是否新增事实：是 / 否
+- 是否需要我确认：是 / 否
 
-请先提取 JD 中最重要的核心关键词，然后对比这份简历，列出简历中缺失的前五条关键信息。
+## 5. Rejected Claims / 被拒绝写入的内容
 
-请输出：
+List claims that might help match the JD but cannot be included because the original resume does not provide enough evidence.
 
-【JD核心关键词提取】
+English:
+- Claim:
+- Why Rejected:
+- Missing Evidence:
+- How User Can Confirm:
 
-1.
+中文：
+- 被拒绝内容：
+- 为什么不能写：
+- 缺少什么证据：
+- 如果是真的，我需要确认什么：
 
-2.
+## 6. Questions to Confirm / 待确认问题
 
-3.
+List questions that would help generate a stronger ATS-optimized resume in the next iteration.
 
-4.
+English:
+- Question:
+- Why It Matters:
+- Resume Section It Can Improve:
 
-5.
-
-【简历中缺失的前五条关键信息】
-
-1.
-
-2.
-
-3.
-
-4.
-
-5.
-
-【这些缺失项对投递的影响】
-
-...
-
-====================
-
-任务四：用 Google XYZ 公式改写经历
-
-====================
-
-请基于这份简历，挑选最值得优化的经历 bullet points，用 Google XYZ 公式进行改写。
-
-Google XYZ 公式为：
-
-通过做 Z，达成了 X 成果，并用 Y 量化。
-
-英文表达逻辑为：
-
-Accomplished [X] as measured by [Y], by doing [Z].
-
-要求：
-
-- 自然融入 JD 关键词。
-
-- 不要编造不存在的成果。
-
-- 如果原文没有数字，请保留原事实，并标注“建议补充量化指标”。
-
-- 不要把经历写得过度夸张。
-
-- 输出中请保留“原句”和“改写后”。
-
-请输出至少 3 条改写建议。
+中文：
+- 问题：
+- 为什么重要：
+- 可以优化哪个简历部分：
 
 ====================
-
-任务五：ATS筛选器检查
-
-====================
-
-现在请你扮演 ATS 申请追踪系统筛选器，扫描这份简历和改写建议。
-
-请指出：
-
-1. 哪些板块可能难以被 ATS 识别
-
-2. 哪些关键词缺失
-
-3. 哪些表达过于模糊
-
-4. 哪些格式或内容可能不适合 ATS
-
-5. 如何修改会更容易通过 ATS
-
-====================
-
-任务六：招聘经理面试问题
-
-====================
-
-现在请你担任该岗位的招聘经理。
-
-请基于这份 JD 和我的个人背景，提出 3 个最难、最可能在面试中被问到的专业问题。
-
-然后结合我的简历背景，为每个问题撰写一个参考回答。
-
-要求：
-
-- 问题要贴合该岗位。
-
-- 回答要结合我的真实经历。
-
-- 不要编造不存在的项目。
-
-- 回答要体现岗位匹配度。
-
-- 如果我的背景中信息不足，请指出需要我补充什么。
-
-====================
-
-任务七：最终总结
-
-====================
-
-请给我一个清晰的最终判断：
-
-1. 当前这份简历是否适合投递？
-
-2. 当前匹配度大概是多少？
-
-3. 是否值得投递？
-
-4. 投递前最应该修改的三件事是什么？
-
-5. 这份 JD 对我来说是强匹配、中等匹配还是弱匹配？
-
-请按以下格式输出：
-
-【最终建议】
-
-推荐简历方向：{selected_role}
-
-匹配度：
-
-是否值得投递：
-
-匹配类型：强匹配 / 中等匹配 / 弱匹配
-
-【投递前最重要的三项修改】
-
-1.
-
-2.
-
-3.
-
-【一句话结论】
-
-...
-
-====================
-
-以下是岗位名称：
-
+以下是目标岗位名称
 ====================
 
 {job_title}
 
 ====================
-
-以下是目标岗位 JD：
-
+以下是目标岗位 JD
 ====================
 
 {jd}
 
 ====================
-
-以下是本地初筛选中的简历：
-
+以下是原始英文简历
 ====================
 
 {selected_resume}
-
 """
-
     return prompt
-
 # =========================
 
 # 6. Prompt：匹配失败时，fallback 三份简历都分析
@@ -675,11 +809,9 @@ def ask_deepseek(prompt):
 # =========================
 
 def main():
-
     job_title, jd = read_jd_file("JDs/jd.txt")
 
     print("读取到岗位名称:", job_title)
-
     print("开始进行本地简历路由...")
 
     best_role, title_scores = choose_resume_by_job_title(job_title)
@@ -689,53 +821,36 @@ def main():
     resumes = load_all_resumes()
 
     if best_role == "UNKNOWN":
-
         print("岗位名称未匹配到明确简历方向，启动 fallback：交给 DeepSeek 分析三份简历。")
 
         prompt = build_fallback_prompt(
-
             job_title=job_title,
-
             jd=jd,
-
             resumes=resumes,
-
             title_scores=title_scores
-
         )
 
     else:
-
         print(f"本地路由成功：推荐使用 {best_role} 简历。")
-
         selected_resume = resumes[best_role]
 
         prompt = build_single_resume_prompt(
-
             job_title=job_title,
-
             jd=jd,
-
             selected_role=best_role,
-
             selected_resume=selected_resume,
-
             title_scores=title_scores
-
         )
 
     print("开始调用 DeepSeek 分析...")
-
     result = ask_deepseek(prompt)
 
     print("\n====================")
-
     print("DeepSeek 分析结果")
-
     print("====================\n")
-
     print(result)
 
-if __name__ == "__main__":
+    save_v04_outputs(result, job_title)
 
+if __name__ == "__main__":
     main()
