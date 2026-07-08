@@ -162,3 +162,38 @@ After the v0.5 prompt became more complex, the model sometimes returned a shorte
 ### 🧩 Notes
 
 This version does not split the prompt into multiple LLM calls yet. Prompt splitting is planned as a future reliability upgrade if the single-prompt workflow becomes unstable again.
+
+## 🧭 v0.5.2 - JD-based Fallback Resume Selector
+
+### 🎯 Goal
+
+Improve fallback behavior when the local title-based router cannot confidently match a job title to an existing resume direction.
+
+Previously, when the job title did not match the predefined routing keywords, the agent entered an older fallback path. That fallback path could analyze multiple resumes, but it did not follow the current marker-based output format, which sometimes caused missing Markdown outputs or marker validation failures.
+
+### ✨ Features
+
+- Adds a JD-based fallback resume selection step.
+- Uses the full job description when the local title-based router returns `UNKNOWN`.
+- Asks the LLM to select the most suitable resume direction from:
+  - SE
+  - PRESALES_SUPPORT
+  - CSM
+  - TAM
+  - UNKNOWN
+- Keeps fallback lightweight by using it only for resume direction selection.
+- Adds `parse_selected_resume_profile()` to extract the selected profile from the LLM response.
+- Adds route-to-resume mapping so hybrid directions such as `PRESALES_SUPPORT` can reuse the closest existing resume profile.
+- Reuses the existing main resume generation workflow after fallback selection.
+- Prevents fallback from using outdated prompts that do not generate the required Markdown sections.
+- Allows ambiguous or out-of-pool job titles to still produce the expected output files:
+  - `tailored_resume_en.md`
+  - `review_notes_bilingual.md`
+
+### 🧩 Notes
+
+This version changes the role of fallback.
+
+Instead of directly generating resume analysis or Markdown files, fallback now acts as a JD-based resume selector. Once a resume direction is selected, the agent returns to the main v0.5 generation workflow.
+
+This keeps the generation logic unified and reduces failures caused by ambiguous job titles.
