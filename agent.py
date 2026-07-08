@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 import os
 # 时间戳工具，用于后续生成的output文件名拼接时间戳，每次调用都生成一份文件不被覆盖
 from datetime import datetime
-import os
+import time
 
 # 和openai对话的入口
 
@@ -178,9 +178,12 @@ RESUME_FILES = {
 
     "SE": "resumes/SupportEngineer.txt",
 
+    "PRESALES_SUPPORT": "resumes/SupportEngineer.txt",
+
     "CSM": "resumes/CustomerSuccessManager.txt",
 
     "TAM": "resumes/TechnicalAccountManager.txt"
+
 
 }
 
@@ -247,6 +250,24 @@ ROLE_TITLE_KEYWORDS = {
 
     ],
 
+    "PRESALES_SUPPORT": [
+
+        "technical sales support",
+
+        "technical sales support specialist",
+
+        "sales support specialist",
+
+        "technical sales specialist",
+
+        "application support specialist",
+
+        "product support specialist",
+
+        "technical specialist"
+
+    ],
+
     "CSM": [
 
         "customer success manager",
@@ -286,6 +307,19 @@ ROLE_TITLE_KEYWORDS = {
         "technical customer success manager"
 
     ]
+
+}
+
+# v0.5.1 兼容presales相关岗位
+ROUTE_TO_RESUME_PROFILE = {
+
+    "SE": "SE",
+
+    "PRESALES_SUPPORT": "SE",
+
+    "CSM": "CSM",
+
+    "TAM": "TAM"
 
 }
 
@@ -1022,37 +1056,114 @@ TAM:
 
 # 7. 调用 DeepSeek
 # v0.5新增重试机制以防连接不稳定报错
-
+# v0.6新增prompt束缚，否则会出现输出太多偷懒
 # =========================
-import time
 from openai import APIConnectionError
+REQUIRED_MARKERS = [
+
+    "===TAILORED_RESUME_EN_MD===",
+
+    "===REVIEW_NOTES_BILINGUAL_MD==="
+
+]
 
 def ask_deepseek(prompt):
+
     max_retries = 3
 
     for attempt in range(max_retries):
+
         try:
+
+            final_prompt = prompt
+
+            if attempt > 0:
+
+                final_prompt = prompt + """
+
+IMPORTANT:
+
+Your previous response was incomplete or did not follow the required output format.
+
+You must include BOTH of the following exact markers:
+
+===TAILORED_RESUME_EN_MD===
+
+===REVIEW_NOTES_BILINGUAL_MD===
+If the content is long, make the review notes concise, but do not omit them.
+
+Do not stop after the tailored resume.
+
+Do not omit the review notes.
+
+Do not rename the markers.
+
+Output both sections completely.
+
+"""
+
             response = client.chat.completions.create(
+
                 model="deepseek-chat",
+
                 messages=[
-                    {"role": "user", "content": prompt}
+
+                    {"role": "user", "content": final_prompt}
+
                 ],
+
                 temperature=0,
+
+                max_tokens=8000,
+
                 timeout=60
+
             )
 
-            return response.choices[0].message.content
+            result = response.choices[0].message.content
 
-        except APIConnectionError as error:
-            print(f"Network connection failed. Attempt {attempt + 1}/{max_retries}")
-            print("This is likely a temporary network, VPN, or API connection issue.")
+            missing_markers = [
+
+                marker for marker in REQUIRED_MARKERS
+
+                if marker not in result
+
+            ]
+
+            if not missing_markers:
+
+                return result
+
+            print(f"DeepSeek output format incomplete. Attempt {attempt + 1}/{max_retries}")
+
+            print("Missing markers:", missing_markers)
 
             if attempt < max_retries - 1:
+
+                print("Retrying with stricter format instruction in 5 seconds...")
+
                 time.sleep(5)
+
             else:
-                raise error
-            
-            
+
+                raise ValueError(f"DeepSeek response missing required markers: {missing_markers}")
+
+        except Exception as error:
+
+            print(f"DeepSeek API call failed. Attempt {attempt + 1}/{max_retries}")
+
+            print("Error:", error)
+
+            if attempt < max_retries - 1:
+
+                print("Retrying in 5 seconds...")
+
+                time.sleep(5)
+
+            else:
+
+                raise            
+
 # =========================
 
 # 8. 主流程
@@ -1084,6 +1195,9 @@ def main():
     else:
         print(f"本地路由成功：推荐使用 {best_role} 简历。")
         selected_resume = resumes[best_role]
+        selected_resume_profile = ROUTE_TO_RESUME_PROFILE[best_role]
+        selected_resume = resumes[selected_resume_profile]
+        print(f"本地路由成功：岗位方向为 {best_role}，实际使用 {selected_resume_profile} 简历。")
 
         prompt = build_single_resume_prompt(
             job_title=job_title,
