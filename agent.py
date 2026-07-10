@@ -700,108 +700,92 @@ English:
 ## 3. Stable ATS-like Match Score / 稳定 ATS-like 匹配度评分
 
 English:
-
 - Total Score: xx/100
+- Match Type: Strong / Medium / Weak
 
 Score Breakdown:
-
 1. Must-have Requirements Match: xx/35
-
    Matching JD Requirements:
-
    Evidence From Original Resume:
-
    Deductions:
 
 2. Transferable Skills Match: xx/20
-
    Matching JD Requirements:
-
    Evidence From Original Resume:
-
    Deductions:
 
 3. Responsibility Alignment: xx/20
-
    Matching JD Requirements:
-
    Evidence From Original Resume:
-
    Deductions:
 
 4. Nice-to-have Coverage: xx/10
-
    Matching JD Requirements:
-
    Evidence From Original Resume:
-
    Deductions:
 
 5. ATS Readability: xx/15
-
    Evidence From Original Resume:
-
    Deductions:
 
-Final Assessment:
+Score Diagnosis:
+- Main reason for the score: 
+  A. True hard-requirement mismatch
+  B. Relevant experience exists but is under-presented
+  C. Resume profile is not ideal
+  D. JD is ambiguous or hybrid
+  E. Stretch role with transferable potential
+- Explanation:
 
-- Match Type: Strong / Medium / Weak
-
-- Worth Applying: Yes / No / Maybe
-
-- Reason:
+Application Decision:
+- Apply Priority: High / Medium / Low
+- Stretch Fit Potential: High / Medium / Low
+- Resume Fixability: High / Medium / Low
+- Recommended Action: Apply / Apply with light tailoring / Apply with heavy tailoring / Do not prioritize
 
 中文：
-
 - 总分：xx/100
+- 匹配类型：强匹配 / 中等匹配 / 弱匹配
 
 评分拆解：
-
 1. 硬性要求匹配：xx/35
-
    匹配的 JD 要求：
-
    原简历证据：
-
    扣分原因：
 
 2. 可迁移能力匹配：xx/20
-
    匹配的 JD 要求：
-
    原简历证据：
-
    扣分原因：
 
 3. 职责匹配：xx/20
-
    匹配的 JD 要求：
-
    原简历证据：
-
    扣分原因：
 
 4. 加分项覆盖：xx/10
-
    匹配的 JD 要求：
-
    原简历证据：
-
    扣分原因：
 
 5. ATS 可读性：xx/15
-
    原简历证据：
-
    扣分原因：
 
-最终判断：
+分数诊断：
+- 当前分数的主要原因：
+  A. 真实硬性条件不匹配
+  B. 相关经历存在但简历呈现不足
+  C. 当前简历方向不够理想
+  D. JD 本身模糊或混合
+  E. 属于有可迁移潜力的 stretch role
+- 解释：
 
-- 匹配类型：强匹配 / 中等匹配 / 弱匹配
-
-- 是否值得投递：是 / 否 / 视情况
-
-- 原因：
+投递决策：
+- 投递优先级：高 / 中 / 低
+- Stretch Fit 潜力：高 / 中 / 低
+- 简历可优化空间：高 / 中 / 低
+- 建议动作：投递 / 简单修改后投递 / 深度定制后投递 / 不优先投递
 
 ## 4. Evidence-Based Match / 基于证据的匹配分析
 
