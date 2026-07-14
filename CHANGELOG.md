@@ -197,3 +197,57 @@ This version changes the role of fallback.
 Instead of directly generating resume analysis or Markdown files, fallback now acts as a JD-based resume selector. Once a resume direction is selected, the agent returns to the main v0.5 generation workflow.
 
 This keeps the generation logic unified and reduces failures caused by ambiguous job titles.
+
+## 🧭 v0.5.3 - Application Decision Layer
+
+### 🎯 Goal
+
+Make match scores more actionable for job application decisions.
+
+Previous versions generated a match score and score breakdown, but the score alone was not enough to determine whether a role was worth applying to. This version adds an application decision layer to help interpret medium or borderline scores.
+
+### ✨ Features
+
+- Adds score diagnosis to explain why the match score is high, medium, or low.
+- Distinguishes between:
+  - True hard-requirement mismatch
+  - Relevant experience being under-presented
+  - Resume profile not being ideal
+  - Ambiguous or hybrid JD
+  - Stretch role with transferable potential
+- Adds application decision outputs:
+  - Apply Priority
+  - Stretch Fit Potential
+  - Resume Fixability
+  - Recommended Action
+- Helps decide whether to apply, lightly tailor, heavily tailor, or deprioritize a role.
+- Makes mid-range scores such as 50–60 easier to interpret.
+
+### 🧩 Notes
+
+This version does not change the scoring rubric itself. It improves how the score is interpreted and used for real application decisions.
+
+
+## 🧠 v0.5.4 - Experience Bank Evidence Selector
+
+### 🎯 Goal
+
+Introduce a two-stage, human-in-the-loop resume tailoring workflow by connecting the Chinese Experience Bank to JobSniper.
+
+Instead of passing the full Experience Bank directly into the final resume generation prompt, this version first selects JD-relevant evidence and saves it as `selected_evidence.md`. The user can review or edit the selected evidence before running Stage 2 to generate the final tailored resume.
+
+### ✨ Features
+
+- Added `experience_bank.md` as a private source of truth for confirmed career facts.
+- Added Stage 1: JD-based Evidence Selector.
+- Generates `selected_evidence.md` for each application run.
+- Added Stage 2-only mode with `--stage2`.
+- Allows manual review and editing of `selected_evidence.md` before final resume generation.
+- Uses selected evidence to strengthen the base resume instead of generating a resume from scratch.
+- Preserves project separation between Project 01, Project 02, and JobSniper.
+- Prevents metrics and facts from being mixed across projects.
+- Keeps Chinese facts as the source of truth while generating English resume output.
+
+### 🧩 Notes
+
+This is a major workflow upgrade. JobSniper now supports an evidence-first resume tailoring process: select evidence, review evidence, then generate the final resume.
