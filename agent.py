@@ -4,7 +4,9 @@ from datetime import datetime
 import os
 import time
 import sys
-
+from docx import Document
+from docx.shared import Pt, Inches
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 load_dotenv()
 
@@ -597,6 +599,65 @@ Do not include Chinese in this section.
 Do not include review notes in this section.
 Do not include risk comments in this section.
 
+Markdown formatting requirements for ===TAILORED_RESUME_EN_MD===:
+
+The final resume must use clean resume-style Markdown that can be converted into DOCX.
+
+Required structure:
+- Use "# Candidate Name" for the candidate name.
+- Put the contact information on the line immediately after the candidate name.
+- Use "##" for major resume sections, such as:
+  ## PROFESSIONAL SUMMARY
+  ## WORK EXPERIENCE
+  ## PERSONAL PROJECT
+  ## EDUCATION
+  ## TECHNICAL SKILLS
+- Use "**bold**" for company names, project names, school names, and personal project names.
+- Use "- " for all bullet points.
+- Use " | " to separate date ranges, locations, and other same-line metadata.
+- For education labels such as 211 or Double 1st-Class, write them as "tag:211" and "tag:Double 1st-Class".
+- Do not use tables.
+- Do not use HTML.
+- Do not include horizontal lines in Markdown.
+- Do not include Markdown code blocks.
+
+Example format:
+
+# Xiaofei Han
+
++86 xxx | email@example.com | Beijing | GitHub URL
+
+## PROFESSIONAL SUMMARY
+
+One concise paragraph.
+
+## WORK EXPERIENCE
+
+**China CITIC Bank Co., Ltd** | Sep 2020 - Jan 2026
+Technical Support & Integration Engineer | Beijing
+
+**Project: Project Name**
+- Bullet point
+- Bullet point
+
+## PERSONAL PROJECT
+
+**JobSniper — LLM-powered Job Application Workflow Assistant** | Jun 2026 - Present
+- Bullet point
+- Bullet point
+
+## EDUCATION
+
+**Beijing University of Technology** | tag:211 | tag:Double 1st-Class | Aug 2016 - Jun 2020
+Software Engineering Bachelor Full-time | Beijing
+
+## TECHNICAL SKILLS
+
+Programming & AI: Java, Python, LLM API Integration, Prompt Engineering, LLM Workflow Design, Git/GitHub
+Integration & Troubleshooting: RESTful APIs, JSON, SQL, MySQL, Linux, Shell scripting, Log Analysis, Postman
+Languages: English, Chinese
+
+
 ===REVIEW_NOTES_BILINGUAL_MD===
 
 Write bilingual review notes here.
@@ -678,23 +739,31 @@ def save_final_outputs(result, output_folder):
         "===REVIEW_NOTES_BILINGUAL_MD==="
     )
 
+    tailored_resume_path = os.path.join(output_folder, "tailored_resume_en.md")
+    review_notes_path = os.path.join(output_folder, "review_notes_bilingual.md")
+    docx_path = os.path.join(output_folder, "tailored_resume.docx")
+
     if tailored_resume_en:
-        save_file(
-            os.path.join(output_folder, "tailored_resume_en.md"),
-            tailored_resume_en
+        save_file(tailored_resume_path, tailored_resume_en)
+        print(f"tailored_resume_en.md saved to: {output_folder}")
+
+        convert_markdown_to_docx(
+            markdown_path=tailored_resume_path,
+            docx_path=docx_path
         )
+        print(f"tailored_resume.docx saved to: {output_folder}")
+
     else:
         print("Warning: tailored_resume_en.md was not generated. Resume marker not found.")
 
     if review_notes_bilingual:
-        save_file(
-            os.path.join(output_folder, "review_notes_bilingual.md"),
-            review_notes_bilingual
-        )
+        save_file(review_notes_path, review_notes_bilingual)
+        print(f"review_notes_bilingual.md saved to: {output_folder}")
     else:
         print("Warning: review_notes_bilingual.md was not generated. Review notes marker not found.")
 
-    print(f"Final Markdown files saved to: {output_folder}")
+    print(f"Final files saved to: {output_folder}")
+
 
 
 def select_resume(job_title, jd):
@@ -802,7 +871,122 @@ def run_stage2_resume_generation(job_title, jd, selected_role, selected_resume, 
     save_final_outputs(result, output_folder)
 
 
+def convert_markdown_to_docx(markdown_path, docx_path):
+    document = Document()
+
+    section = document.sections[0]
+    section.top_margin = Inches(0.5)
+    section.bottom_margin = Inches(0.5)
+    section.left_margin = Inches(0.6)
+    section.right_margin = Inches(0.6)
+
+    style = document.styles["Normal"]
+    style.font.name = "Arial"
+    style.font.size = Pt(10)
+
+    markdown = read_file(markdown_path)
+    lines = markdown.splitlines()
+
+    for line in lines:
+        line = line.strip()
+
+        if not line:
+            continue
+
+        if line.startswith("# "):
+            name = line.replace("# ", "").strip()
+            paragraph = document.add_paragraph()
+            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            run = paragraph.add_run(name)
+            run.bold = True
+            run.font.size = Pt(16)
+
+        elif line.startswith("## "):
+            heading = line.replace("## ", "").strip().upper()
+            paragraph = document.add_paragraph()
+            run = paragraph.add_run(heading)
+            run.bold = True
+            run.font.size = Pt(11)
+
+            # section heading 下方横线
+            border_paragraph = document.add_paragraph()
+            p = border_paragraph._p
+            pPr = p.get_or_add_pPr()
+
+            from docx.oxml import OxmlElement
+            from docx.oxml.ns import qn
+
+            pBdr = OxmlElement("w:pBdr")
+            bottom = OxmlElement("w:bottom")
+            bottom.set(qn("w:val"), "single")
+            bottom.set(qn("w:sz"), "6")
+            bottom.set(qn("w:space"), "1")
+            bottom.set(qn("w:color"), "000000")
+            pBdr.append(bottom)
+            pPr.append(pBdr)
+
+        elif line.startswith("- "):
+            bullet_text = line.replace("- ", "").strip()
+            paragraph = document.add_paragraph(style="List Bullet")
+            paragraph.paragraph_format.space_after = Pt(2)
+            paragraph.add_run(clean_markdown_bold(bullet_text))
+
+        else:
+            paragraph = document.add_paragraph()
+            paragraph.paragraph_format.space_after = Pt(2)
+
+            if line.startswith("**") and "**" in line[2:]:
+                clean_line = clean_markdown_bold(line)
+                run = paragraph.add_run(clean_line)
+                run.bold = True
+            else:
+                paragraph.add_run(clean_markdown_bold(line))
+
+    document.save(docx_path)
+
+
+def clean_markdown_bold(text):
+    return text.replace("**", "")
+
+
+def get_export_docx_folder_from_args():
+    if "--export-docx" in sys.argv:
+        index = sys.argv.index("--export-docx")
+
+        if index + 1 >= len(sys.argv):
+            raise ValueError("请在 --export-docx 后面提供 output 文件夹路径。")
+
+        return sys.argv[index + 1]
+
+    return None
+
+
 def main():
+
+    export_docx_folder = get_export_docx_folder_from_args()
+
+    if export_docx_folder:
+
+        markdown_path = os.path.join(export_docx_folder, "tailored_resume_en.md")
+
+        docx_path = os.path.join(export_docx_folder, "tailored_resume.docx")
+
+        if not os.path.exists(markdown_path):
+
+            raise FileNotFoundError(f"没有找到 tailored_resume_en.md: {markdown_path}")
+
+        convert_markdown_to_docx(
+
+            markdown_path=markdown_path,
+
+            docx_path=docx_path
+
+        )
+
+        print(f"tailored_resume.docx exported to: {export_docx_folder}")
+
+        return
+
     job_title, jd = read_jd_file(JD_PATH)
 
     print("读取到岗位名称:", job_title)

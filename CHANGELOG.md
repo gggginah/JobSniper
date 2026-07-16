@@ -251,3 +251,32 @@ Instead of passing the full Experience Bank directly into the final resume gener
 ### 🧩 Notes
 
 This is a major workflow upgrade. JobSniper now supports an evidence-first resume tailoring process: select evidence, review evidence, then generate the final resume.
+
+## 📄 v0.6 - DOCX Resume Exporter
+
+### 🎯 Goal
+
+Reduce manual copy-paste and formatting work by converting the tailored Markdown resume into an editable Word document.
+
+Previously, JobSniper generated `tailored_resume_en.md`, but the user still needed to manually copy the content into a resume template and adjust formatting before submission. This version adds a DOCX export step so the tailored resume can be opened directly in Word or WPS for final review.
+
+### ✨ Features
+
+- Added DOCX resume export using `python-docx`.
+- Converts `tailored_resume_en.md` into `tailored_resume.docx`.
+- Saves the DOCX file in the same timestamped output folder.
+- Applies basic resume-style formatting:
+  - centered candidate name
+  - contact information line
+  - section headings
+  - bullet points
+  - consistent font and margins
+- Added Markdown-to-DOCX conversion logic for structured resume content.
+- Added support for an export-only workflow so an existing `tailored_resume_en.md` can be converted again without rerunning the full LLM workflow.
+- Keeps Markdown output as the editable content source and DOCX as the application-ready document format.
+
+### 🧩 Notes
+
+This version significantly improves JobSniper’s practical usability. The project now supports a more complete application workflow: JD analysis, evidence selection, tailored resume generation, review notes, and editable DOCX resume export.
+
+The current DOCX output is usable but still needs formatting refinement. Future versions will focus on spacing, one-page layout, right-aligned dates and locations, styled education tags, clickable links, and more polished resume formatting.
