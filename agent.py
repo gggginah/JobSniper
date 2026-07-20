@@ -7,6 +7,7 @@ import sys
 from docx import Document
 from docx.shared import Pt, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.text import WD_COLOR_INDEX
 
 load_dotenv()
 
@@ -871,6 +872,26 @@ def run_stage2_resume_generation(job_title, jd, selected_role, selected_resume, 
     save_final_outputs(result, output_folder)
 
 
+def add_bottom_border(paragraph):
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+
+    p = paragraph._p
+    pPr = p.get_or_add_pPr()
+
+    pBdr = pPr.find(qn("w:pBdr"))
+    if pBdr is None:
+        pBdr = OxmlElement("w:pBdr")
+        pPr.append(pBdr)
+
+    bottom = OxmlElement("w:bottom")
+    bottom.set(qn("w:val"), "single")
+    bottom.set(qn("w:sz"), "6")
+    bottom.set(qn("w:space"), "0")
+    bottom.set(qn("w:color"), "000000")
+
+    pBdr.append(bottom)
+    
 def convert_markdown_to_docx(markdown_path, docx_path):
     document = Document()
 
@@ -880,9 +901,17 @@ def convert_markdown_to_docx(markdown_path, docx_path):
     section.left_margin = Inches(0.6)
     section.right_margin = Inches(0.6)
 
-    style = document.styles["Normal"]
-    style.font.name = "Arial"
-    style.font.size = Pt(10)
+    body_font = "Arial"
+    body_size = Pt(9.3)
+
+    normal_style = document.styles["Normal"]
+    normal_style.font.name = body_font
+    normal_style.font.size = body_size
+
+    bullet_style = document.styles["List Bullet"]
+    bullet_style.font.name = body_font
+    bullet_style.font.size = body_size
+
 
     markdown = read_file(markdown_path)
     lines = markdown.splitlines()
@@ -894,42 +923,92 @@ def convert_markdown_to_docx(markdown_path, docx_path):
             continue
 
         if line.startswith("# "):
-            name = line.replace("# ", "").strip()
-            paragraph = document.add_paragraph()
-            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            run = paragraph.add_run(name)
-            run.bold = True
-            run.font.size = Pt(16)
 
-        elif line.startswith("## "):
-            heading = line.replace("## ", "").strip().upper()
+            name = line.replace("# ", "").strip()
+
             paragraph = document.add_paragraph()
-            run = paragraph.add_run(heading)
+
+            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+            paragraph.paragraph_format.space_after = Pt(2)
+
+            run = paragraph.add_run(name)
+
             run.bold = True
+            run.font.name = "Arial"
+            run.font.size = Pt(18)
+
+        elif "|" in line and (
+            "@" in line
+            or "+86" in line
+        ):
+
+            paragraph = document.add_paragraph()
+
+            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+            paragraph.paragraph_format.space_after = Pt(4)
+
+            run = paragraph.add_run(line)
+
+            run.font.name = body_font
+            run.font.size = Pt(8.5)
+            
+        elif line.startswith("## "):
+
+            heading = line.replace("## ", "").strip().upper()
+
+            paragraph = document.add_paragraph()
+
+            paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
+
+            paragraph.paragraph_format.space_before = Pt(6)
+            paragraph.paragraph_format.space_after = Pt(2)
+
+            run = paragraph.add_run(heading)
+
+            run.bold = True
+            run.font.name = body_font
             run.font.size = Pt(11)
 
-            # section heading 下方横线
-            border_paragraph = document.add_paragraph()
-            p = border_paragraph._p
-            pPr = p.get_or_add_pPr()
+            add_bottom_border(paragraph)
 
-            from docx.oxml import OxmlElement
-            from docx.oxml.ns import qn
+        elif "|" in line:
+    
+            paragraph = document.add_paragraph()
 
-            pBdr = OxmlElement("w:pBdr")
-            bottom = OxmlElement("w:bottom")
-            bottom.set(qn("w:val"), "single")
-            bottom.set(qn("w:sz"), "6")
-            bottom.set(qn("w:space"), "1")
-            bottom.set(qn("w:color"), "000000")
-            pBdr.append(bottom)
-            pPr.append(pBdr)
+            paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
+
+            run = paragraph.add_run(clean_markdown_bold(line))
+
+            run.font.name = body_font
+            run.font.size = body_size
+
+        elif line.startswith("Project:"):
+
+            paragraph = document.add_paragraph()
+
+            paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
+
+            run = paragraph.add_run(
+                clean_markdown_bold(line)
+            )
+
+            run.bold = True
+            run.font.name = body_font
+            run.font.size = body_size
 
         elif line.startswith("- "):
-            bullet_text = line.replace("- ", "").strip()
+            bullet_text = line[2:].strip()
             paragraph = document.add_paragraph(style="List Bullet")
-            paragraph.paragraph_format.space_after = Pt(2)
-            paragraph.add_run(clean_markdown_bold(bullet_text))
+            paragraph.paragraph_format.space_before = Pt(0)
+            paragraph.paragraph_format.space_after = Pt(0)
+            paragraph.paragraph_format.line_spacing = 1.0
+
+            run = paragraph.add_run(clean_markdown_bold(bullet_text))
+            run.font.name = body_font
+            run.font.size = body_size
+
 
         else:
             paragraph = document.add_paragraph()
@@ -938,14 +1017,36 @@ def convert_markdown_to_docx(markdown_path, docx_path):
             if line.startswith("**") and "**" in line[2:]:
                 clean_line = clean_markdown_bold(line)
                 run = paragraph.add_run(clean_line)
+                run.font.name = body_font
+                run.font.size = body_size
+
                 run.bold = True
+            
             else:
-                paragraph.add_run(clean_markdown_bold(line))
+
+                paragraph = document.add_paragraph()
+
+                run = paragraph.add_run(
+                    clean_markdown_bold(line)
+                )
+
+                run.font.name = body_font
+                run.font.size = body_size
+
 
     document.save(docx_path)
 
 
 def clean_markdown_bold(text):
+
+    replacements = {
+        "tag:211": "211 University",
+        "tag:Double 1st-Class": "Double First-Class"
+    }
+
+    for old, new in replacements.items():
+        text = text.replace(old, new)
+
     return text.replace("**", "")
 
 
