@@ -106,6 +106,23 @@ def read_file(path):
     with open(path, "r", encoding="utf-8") as file:
         return file.read()
 
+def load_prompt(path):
+
+    """
+
+    Load prompt template from markdown file.
+
+    """
+
+    if not os.path.exists(path):
+
+        raise FileNotFoundError(
+
+            f"Prompt file not found: {path}"
+
+        )
+
+    return read_file(path)
 
 def save_file(path, content):
     with open(path, "w", encoding="utf-8") as file:
@@ -279,92 +296,21 @@ Do not omit required sections.
 
 
 def build_fallback_resume_selection_prompt(job_title, jd, title_scores):
-    prompt = f"""
-You are a resume routing assistant.
+        template = load_prompt(
 
-The local title-based router could not confidently match this job title to a resume profile.
+        "PROMPT/fallback_resume_selection.md"
 
-Your task is to analyze the full job description and select the most suitable resume profile.
+    )
 
-Available resume profiles:
+        return template.format(
 
-1. SE
-Use this profile when the role is closest to:
-- Support Engineer
-- Technical Support Engineer
-- Product Support
-- Application Support
-- Solution Engineer
-- Pre-sales Engineer
-- Technical troubleshooting
-- Technical customer communication
+            job_title=job_title,
 
-2. PRESALES_SUPPORT
-Use this profile when the role is closest to:
-- Technical Sales
-- Technical Sales Support
-- Sales Support with technical responsibilities
-- Solution support
-- Pre-sales support
-- Product consultation
-- Customer-facing technical sales support
+            jd=jd,
 
-3. CSM
-Use this profile when the role is closest to:
-- Customer Success Manager
-- Customer Success
-- Customer Adoption
-- Customer Relationship Management
-- Account growth
-- Renewal / retention support
-- Customer onboarding from a relationship perspective
+            title_scores=title_scores
 
-4. TAM
-Use this profile when the role is closest to:
-- Technical Account Manager
-- Implementation Consultant
-- Technical Consultant
-- Customer Engineer
-- Enterprise technical relationship management
-- Post-sales technical ownership
-- Implementation / integration support
-
-5. UNKNOWN
-Use UNKNOWN only when the JD is clearly outside these directions or there is not enough evidence to choose.
-
-Important rules:
-- Do not rely only on the job title.
-- Use the full JD responsibilities and requirements.
-- Prefer the profile that best matches the actual work described in the JD.
-- If the role is hybrid, choose the closest primary profile.
-- Return only one final selected profile.
-- Do not generate a resume.
-- Do not generate review notes.
-- Keep the reason brief.
-
-Output format:
-You must use exactly this format:
-
-SELECTED_PROFILE: SE / PRESALES_SUPPORT / CSM / TAM / UNKNOWN
-REASON_EN: one short English explanation
-REASON_ZH: 一句简短中文解释
-
-====================
-Job Title
-====================
-{job_title}
-
-====================
-Local Router Scores
-====================
-{title_scores}
-
-====================
-Job Description
-====================
-{jd}
-"""
-    return prompt
+        )
 
 
 def parse_selected_resume_profile(selection_result):
@@ -524,199 +470,27 @@ Chinese Experience Bank
     return prompt
 
 
-def build_single_resume_prompt(job_title, jd, selected_role, selected_resume, title_scores, selected_evidence):
-    prompt = f"""
-You are a senior recruiter, resume strategist, and ATS optimization assistant.
+def build_single_resume_prompt(
+        job_title,
+        jd,
+        selected_role,
+        selected_resume,
+        title_scores,
+        selected_evidence
+):
 
-Your task is to generate a JD-tailored English resume draft and bilingual review notes.
+    template = load_prompt(
+        "PROMPT/resume_generation_step3.md"
+    )
 
-You must use:
-1. The selected resume as the base structure.
-2. The job description as the target.
-3. The selected evidence extracted from the candidate's Chinese Experience Bank.
-
-Important language rules:
-- The final resume must be written in English.
-- The selected evidence may contain Chinese facts.
-- Chinese facts are the source of truth.
-- Translate only relevant Chinese facts into safe, natural, resume-ready English.
-- Do not translate or use evidence that is irrelevant to this JD.
-- Do not invent or embellish facts during translation.
-
-Important resume generation rules:
-- Use the selected resume as the base structure.
-- Do not generate a resume completely from scratch.
-- Preserve the original resume's project structure as much as possible.
-- You may revise, reorder, replace, or strengthen bullet points only when supported by the selected resume or selected evidence.
-- You may add new evidence from selected_evidence if it improves JD alignment.
-- Do not add evidence that is not in the selected resume or selected evidence.
-- Keep Project 01 and Project 02 separate.
-- Do not merge bullets from different projects.
-- Do not move metrics between projects.
-- Do not move Project 01 metrics into Project 02.
-- Do not move Project 02 metrics into Project 01.
-- JobSniper evidence may only be used in a Personal Project section if relevant to the JD.
-- If JobSniper is not relevant, do not force it into the resume.
-
-Strict anti-hallucination rules:
-- Do not invent facts, metrics, tools, titles, certifications, customers, platforms, or responsibilities.
-- Do not claim formal CSAT, SLA, Contact Rate, revenue ownership, or official Product Manager ownership unless clearly supported.
-- Do not upgrade internal users into external customers unless the evidence clearly supports it.
-- Do not describe branch client managers as external customers.
-- Do not claim production deployment or commercial users for JobSniper.
-- If a selected evidence item is risky, unclear, or marked as "Needs human review", do not put it in the final resume. Mention it in review_notes_bilingual.md instead.
-- The review_notes_bilingual.md section must be bilingual. If you provide an English point, also provide a Chinese explanation.
-
-Scoring rules:
-Use this fixed 100-point rubric:
-- Must-have Requirements Match: 35
-- Transferable Skills Match: 20
-- Responsibility Alignment: 20
-- Nice-to-have Coverage: 10
-- ATS Readability: 15
-
-Application decision rules:
-After scoring, provide:
-- Score Diagnosis
-- Apply Priority: High / Medium / Low
-- Stretch Fit Potential: High / Medium / Low
-- Resume Fixability: High / Medium / Low
-- Recommended Action: Apply / Apply with light tailoring / Apply with heavy tailoring / Do not prioritize
-
-Output rules:
-- You must output exactly two sections.
-- Use the exact markers below.
-- Do not rename the markers.
-- Do not omit either section.
-- Do not include extra text before the first marker.
-
-Required output format:
-
-===TAILORED_RESUME_EN_MD===
-
-Write the full tailored English resume here.
-The resume should be clean, ATS-friendly, and ready to copy into a Markdown file.
-Do not include Chinese in this section.
-Do not include review notes in this section.
-Do not include risk comments in this section.
-
-Markdown formatting requirements for ===TAILORED_RESUME_EN_MD===:
-
-The final resume must use clean resume-style Markdown that can be converted into DOCX.
-
-Required structure:
-- Use "# Candidate Name" for the candidate name.
-- Put the contact information on the line immediately after the candidate name.
-- Use "##" for major resume sections, such as:
-  ## PROFESSIONAL SUMMARY
-  ## WORK EXPERIENCE
-  ## PERSONAL PROJECT
-  ## EDUCATION
-  ## TECHNICAL SKILLS
-- Use "**bold**" for company names, project names, school names, and personal project names.
-- Use "- " for all bullet points.
-- Use " | " to separate date ranges, locations, and other same-line metadata.
-- For education labels such as 211 or Double 1st-Class, write them as "tag:211" and "tag:Double 1st-Class".
-- Do not use tables.
-- Do not use HTML.
-- Do not include horizontal lines in Markdown.
-- Do not include Markdown code blocks.
-
-Example format:
-
-# Xiaofei Han
-
-+86 xxx | email@example.com | Beijing | GitHub URL
-
-## PROFESSIONAL SUMMARY
-
-One concise paragraph.
-
-## WORK EXPERIENCE
-
-**China CITIC Bank Co., Ltd** | Sep 2020 - Jan 2026
-Technical Support & Integration Engineer | Beijing
-
-**Project: Project Name**
-- Bullet point
-- Bullet point
-
-## PERSONAL PROJECT
-
-**JobSniper — LLM-powered Job Application Workflow Assistant** | Jun 2026 - Present
-- Bullet point
-- Bullet point
-
-## EDUCATION
-
-**Beijing University of Technology** | tag:211 | tag:Double 1st-Class | Aug 2016 - Jun 2020
-Software Engineering Bachelor Full-time | Beijing
-
-## TECHNICAL SKILLS
-
-Programming & AI: Java, Python, LLM API Integration, Prompt Engineering, LLM Workflow Design, Git/GitHub
-Integration & Troubleshooting: RESTful APIs, JSON, SQL, MySQL, Linux, Shell scripting, Log Analysis, Postman
-Languages: English, Chinese
-
-
-===REVIEW_NOTES_BILINGUAL_MD===
-
-Write bilingual review notes here.
-
-Strict bilingual rules:
-- This section must include both English and Chinese.
-- Every major heading must be bilingual, using this format:
-  ## English Heading / 中文标题
-- For each important point, write the English explanation first, then the Chinese explanation immediately below it.
-- Do not write this section in English only.
-- Do not write this section in Chinese only.
-- Keep the final resume section English-only, but this review notes section must be bilingual.
-
-Must include these bilingual sections:
-1. Match Score and Rubric Breakdown / 匹配度评分与评分拆解
-2. Score Diagnosis / 分数诊断
-3. Apply Priority / 投递优先级
-4. Stretch Fit Potential / Stretch 岗位潜力
-5. Resume Fixability / 简历可修复度
-6. Recommended Action / 建议行动
-7. JD Keywords Used / 使用到的 JD 关键词
-8. Evidence Added from Experience Bank / 从 Experience Bank 添加的证据
-9. Evidence Not Used and Why / 未使用的证据及原因
-10. Risky / Needs Human Review / 有风险或需要人工确认的内容
-11. Project Separation Check / 项目归属检查
-12. Potential Interview Questions and Suggested Answers / 潜在面试问题与建议回答
-
-====================
-Job Title
-====================
-{job_title}
-
-====================
-Selected Role Route
-====================
-{selected_role}
-
-====================
-Local Router Scores
-====================
-{title_scores}
-
-====================
-Job Description
-====================
-{jd}
-
-====================
-Selected Resume Base
-====================
-{selected_resume}
-
-====================
-Selected Evidence from Experience Bank
-====================
-{selected_evidence}
-"""
-    return prompt
+    return template.format(
+        job_title=job_title,
+        jd=jd,
+        selected_role=selected_role,
+        selected_resume=selected_resume,
+        title_scores=title_scores,
+        selected_evidence=selected_evidence
+    )   
 
 
 def save_selected_evidence(selected_evidence, output_folder):
